@@ -88,7 +88,7 @@ files['ASM:STANDARDFONT'] = asm_bytes('FONT.ASM', 'StandardFont', 4096)
 files['ASM:STANDARDPALETTE'] = asm_bytes('PALETTE.ASM', 'StandardPalette', 768)
 files['ASM:STANDARDCURSOR'] = asm_bytes('CURSOR.ASM', 'StandardCursor', 4 + 1024)
 
-with open(OUT, 'w', encoding='utf-8') as o:
+with open(OUT, 'w', encoding='utf-8', newline='\n') as o:
     o.write('// Сгенерировано tools/build_assets.py из оригинальных файлов игры. Не редактировать.\n')
     o.write('var ASSETS_B64 = {\n')
     for k in sorted(files):
