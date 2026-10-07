@@ -17,16 +17,23 @@ function audioInit() {
   if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
+// NoSound — генератор останавливается и отключается целиком (а не просто
+// приглушается): так нота гарантированно не «зависнет» ни в одном браузере
 function speakerApply() {
   if (!audioCtx) return;
-  if (!spkOsc) {
-    spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
-    spkGain = audioCtx.createGain(); spkGain.gain.value = 0;
-    spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
-  }
   var on = spkHz > 0 && MUSIC && !paused && progState === 'run';
-  if (on) spkOsc.frequency.setValueAtTime(spkHz, audioCtx.currentTime);
-  spkGain.gain.setValueAtTime(on ? 0.05 : 0, audioCtx.currentTime);
+  if (on) {
+    if (!spkOsc) {
+      spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
+      spkGain = audioCtx.createGain(); spkGain.gain.value = 0.05;
+      spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
+    }
+    spkOsc.frequency.value = spkHz;
+  } else if (spkOsc) {
+    try { spkOsc.stop(); } catch (e) {}
+    spkOsc.disconnect(); spkGain.disconnect();
+    spkOsc = null; spkGain = null;
+  }
 }
 speakerOut = function (hz) { spkHz = hz; speakerApply(); };
 var errorCode = 0;

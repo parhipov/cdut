@@ -170,6 +170,7 @@
 <li><b>После «МОЛОДЕЦ» новая игра может начаться сама</b>, если последней клавишей была S: переменная <code>c</code> не сбрасывается.</li>
 <li><b>Дрейф на новом уровне.</b> Если последней стрелкой была «вверх» или «вниз», лодка на новом уровне сразу плывёт по вертикали, бывает, что прямо в пол.</li>
 <li><b>S пропускает уровень</b> — отладочная клавиша осталась в игре. Если нажать её, стоя в трубе EXIT с ключом, уровень прибавится дважды. Со второго уровня сразу будет «МОЛОДЕЦ». С третьего начнётся «пятый уровень», прочитанный за концом файла, — пустое море без выхода.</li>
+<li><b>Шахты пускают не всегда.</b> При движении вверх и вниз стена проверяется в столбце по ходу носа лодки. В узкую шахту, например в правую верхнюю комнату первого уровня, лодка проходит, только если стоит чуть «позади» по ходу носа и со скоростью 0, иначе взрывается о стенку.</li>
 <li><b>Предметы подбираются издалека</b>: из любой точки левее и ниже них, потому что в проверке нет <code>abs</code>.</li>
 <li><b>Предмет-«призрак».</b> Вместо возврата страницы <code>SetActivePage(1-page)</code> вызывается второй раз, поэтому иногда подобранный предмет стирается только на одной странице и мерцает.</li>
 <li><b>Огрехи фона при входе в комнату.</b> В комнатах с камнями фон под лодкой снимается со старой страницы. При смене комнаты обновляется только одна координата лодки.</li>
@@ -963,6 +964,10 @@ function perehod(ekrIn) {
 // BUG (оригинал): у плиток 15/16 и 17/18/24/25/28..31 две проверки подряд, и обе
 // могут сработать — взрыв лодки проигрывается дважды (а ещё раз — от бомбы,
 // врага или камня в том же кадре).
+// Особенность (оригинал): столбец для проверки берётся по ходу лодки (j1 = a div 72,
+// при dx>0 — следующий) и при движении вверх-вниз тоже. В узкую вертикальную шахту
+// лодка проходит, только если стоит «позади» по ходу носа: носом вправо — левым краем
+// не дальше 28 пикселей правее края шахты, носом влево — зеркально.
 async function gran() {
   // (проверка по цвету пикселей вокруг лодки в исходнике закомментирована)
   if (dx > 0) j1 = Math.trunc(a / 72) + 1;
@@ -1732,16 +1737,23 @@ function audioInit() {
   if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 }
+// NoSound — генератор останавливается и отключается целиком (а не просто
+// приглушается): так нота гарантированно не «зависнет» ни в одном браузере
 function speakerApply() {
   if (!audioCtx) return;
-  if (!spkOsc) {
-    spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
-    spkGain = audioCtx.createGain(); spkGain.gain.value = 0;
-    spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
-  }
   var on = spkHz > 0 && MUSIC && !paused && progState === 'run';
-  if (on) spkOsc.frequency.setValueAtTime(spkHz, audioCtx.currentTime);
-  spkGain.gain.setValueAtTime(on ? 0.05 : 0, audioCtx.currentTime);
+  if (on) {
+    if (!spkOsc) {
+      spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
+      spkGain = audioCtx.createGain(); spkGain.gain.value = 0.05;
+      spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
+    }
+    spkOsc.frequency.value = spkHz;
+  } else if (spkOsc) {
+    try { spkOsc.stop(); } catch (e) {}
+    spkOsc.disconnect(); spkGain.disconnect();
+    spkOsc = null; spkGain = null;
+  }
 }
 speakerOut = function (hz) { spkHz = hz; speakerApply(); };
 var errorCode = 0;
