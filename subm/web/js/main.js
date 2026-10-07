@@ -9,14 +9,34 @@
 var canvas, ctx, img, img32;
 var PAL32 = new Uint32Array(16);
 var progState = 'run';          // run | dos | error
+var running = false;            // программа запущена (после первого нажатия — иначе браузер не даст звук)
+
+// ---- PC-спикер: квадратная волна (в «нерелизной» версии с музыкой) ----------
+var audioCtx = null, spkOsc = null, spkGain = null, spkHz = 0;
+function audioInit() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function speakerApply() {
+  if (!audioCtx) return;
+  if (!spkOsc) {
+    spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
+    spkGain = audioCtx.createGain(); spkGain.gain.value = 0;
+    spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
+  }
+  var on = spkHz > 0 && MUSIC && !paused && progState === 'run';
+  if (on) spkOsc.frequency.setValueAtTime(spkHz, audioCtx.currentTime);
+  spkGain.gain.setValueAtTime(on ? 0.05 : 0, audioCtx.currentTime);
+}
+speakerOut = function (hz) { spkHz = hz; speakerApply(); };
 var errorCode = 0;
 var reportOpen = false;         // открыто окно справки или отчёта — игра на паузе
 
 // на экран идёт последний кадр, «прочерченный» лучом (см. развёртку в bgi.js)
 function present() {
   requestAnimationFrame(present);
-  if (progState === 'dos') return;
-  if (progState === 'run') scanTo(Math.min(nowMs(), awaitLimit));
+  if (!running || progState === 'dos') return;
+  if (progState === 'run') { timerPump(nowMs()); scanTo(Math.min(nowMs(), awaitLimit)); }
   var src = progState === 'run' ? dispDone : VRAM.subarray(PAGE_BASE[bgi.visual], PAGE_BASE[bgi.visual] + 640 * 350);
   for (var p = 0; p < 640 * 350; p++) img32[p] = PAL32[src[p]];
   ctx.putImageData(img, 0, 0);
@@ -33,7 +53,7 @@ function biosText(buf, base, row, col, s) {
 }
 // экран DOS после выхода из программы: CloseGraph вернул текстовый режим 80x25
 function showDos(lines) {
-  progState = 'dos';
+  progState = 'dos'; speakerApply();
   var t = new Uint8Array(640 * 350);
   for (var r = 0; r < lines.length; r++) biosText(t, 0, r, 0, S(lines[r]));
   for (var p = 0; p < 640 * 350; p++) img32[p] = PAL32[t[p]];
@@ -55,7 +75,7 @@ async function runProgram() {
 // сообщение телетайпом BIOS поверх картинки (на видимой странице), затем
 // COMMAND.COM — приглашение. Так выглядит и оригинал в DOSBox.
 function showRunError(e) {
-  progState = 'error';
+  progState = 'error'; speakerApply();
   console.warn('[оригинал] Runtime error ' + e.code + ' at ' + e.addr);
   var code = ('00' + e.code).slice(-3);
   var base = PAGE_BASE[bgi.visual];
@@ -67,7 +87,7 @@ function showRunError(e) {
 // Ctrl+Break: Crt пишет «^C» в левый верхний угол страницы 0 и завершает
 // программу без сообщения; экран остаётся в графике
 function showBreak() {
-  progState = 'error';
+  progState = 'error'; speakerApply();
   biosText(VRAM, PAGE_BASE[0], 0, 0, S('^C'));
   biosText(VRAM, PAGE_BASE[bgi.visual], 2, 0, S('C:\\>'));
   document.getElementById('dosmsg').style.display = 'flex';
@@ -158,6 +178,10 @@ function onKeyDown(e) {
   }
   if (e.metaKey) return;
   if (e.code === 'F11' || e.code === 'F12' || (e.code === 'F5' && !e.altKey && !e.shiftKey && !e.ctrlKey)) return;
+  if (!running) {
+    if (!e.ctrlKey && !e.altKey) { e.preventDefault(); startGame(); }
+    return;
+  }
   if (progState !== 'run') {
     if (e.ctrlKey || e.altKey) return;
     e.preventDefault(); if (!e.repeat) location.reload(); return;
@@ -192,6 +216,7 @@ function toggleReport(which) {
     el.classList.toggle('open', id === reportOpen);
     document.getElementById('btn-' + id).textContent = id === reportOpen ? 'К игре' : READERS[id];
   });
+  speakerApply();
   if (!reportOpen) canvas.focus();
 }
 
@@ -226,8 +251,24 @@ function boot() {
     try { localStorage.setItem('subm:cpu', sel.value); } catch (e) {}
     canvas.focus();
   };
-  realStart = performance.now(); vclock = 0; scanReset(0);
+  var mus = document.getElementById('music');
+  try { var savedMus = localStorage.getItem('subm:music'); if (savedMus === 'on' || savedMus === 'off') mus.value = savedMus; } catch (e) {}
+  MUSIC = mus.value === 'on';
+  mus.onchange = function () {
+    MUSIC = mus.value === 'on';
+    try { localStorage.setItem('subm:music', mus.value); } catch (e) {}
+    audioInit(); speakerApply(); canvas.focus();
+  };
+  document.getElementById('start').addEventListener('click', function (e) { e.preventDefault(); startGame(); });
   requestAnimationFrame(present);
+}
+// запуск по первому щелчку или клавише: SUBM8.EXE «запускается» с этого момента
+function startGame() {
+  if (running) return;
+  document.getElementById('start').style.display = 'none';
+  audioInit();
+  running = true;
+  realStart = performance.now(); vclock = 0; scanReset(0); tickNo = -1;
   canvas.focus();
   runProgram();
 }

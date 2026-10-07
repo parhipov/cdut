@@ -103,6 +103,24 @@ function waitUntil(t) {
   });
 }
 
+// ---- таймер BIOS (INT 1Ch) и PC-спикер (Crt.Sound / NoSound) ---------------
+// Нужны только «нерелизной» музыке: в исходнике обработчики INT 1Ch закомментированы.
+// Таймер тикает 1193180/65536 = 18,2 раза в секунду; Sound программирует канал 2
+// таймера делителем 1193180 div Hz — отсюда точная частота ноты.
+var TICK_MS = 65536 * 1000 / 1193180;      // 54,925 мс
+var int1C = null, tickNo = -1;
+var speakerOut = null;                      // вывод звука подставляет браузер (main.js)
+function getintvec(n) { return int1C; }
+function setintvec(n, h) { int1C = h; }
+function sound(hz) { var div = Math.floor(1193180 / hz); if (speakerOut) speakerOut(1193180 / div); }
+function nosound() { if (speakerOut) speakerOut(0); }
+// тики таймера по реальному времени; пока игра на паузе (открыта справка), таймер стоит
+function timerPump(now) {
+  var k = Math.floor(now / TICK_MS);
+  if (tickNo < 0 || paused || k - tickNo > 40) { tickNo = k; return; }
+  while (tickNo < k) { tickNo++; if (int1C) int1C(); }
+}
+
 // ---- клавиатура: буфер BIOS (15 нажатий) и Crt.ReadKey ---------------------
 var kbdBuf = [];                            // слова (скан-код << 8) | ASCII
 var crtScan = 0;                            // второй байт расширенной клавиши

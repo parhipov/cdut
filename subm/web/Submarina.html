@@ -23,6 +23,11 @@
   #bar .hint { margin-left: auto; opacity: .6; }
   #bar .cpu { display: flex; align-items: center; gap: 6px; }
   #bar select { background: var(--btn); color: var(--fg); border: 1px solid #444; font: inherit; padding: 3px 4px; }
+  #start { position: fixed; inset: 0 0 34px 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 14px; background: #000; color: #aaa; cursor: pointer; z-index: 5; text-align: center; padding: 16px; }
+  #start h1 { margin: 0; font-size: 28px; color: #ddd; font-weight: normal; letter-spacing: 1px; }
+  #start .go { color: #5f5; font-size: 18px; }
+  #start .small { opacity: .6; max-width: 640px; }
   #dosmsg { position: fixed; left: 0; right: 0; bottom: 44px; display: none; justify-content: center; z-index: 4; cursor: pointer; }
   #dosmsg span { background: rgba(20, 20, 20, .9); border: 1px solid #444; color: #ddd; padding: 6px 14px; }
   .reader { position: fixed; inset: 0 0 34px 0; z-index: 6; background: #050505; overflow-y: auto; display: none; }
@@ -52,9 +57,18 @@
   <button id="btn-full" title="Во весь экран">Во весь экран</button>
   <button id="btn-help" title="Справка о программе (HELP.TXT)">Справка</button>
   <button id="btn-otchet" title="Мнение о проекте и отчёт о переносе в браузер">Отчёт о переезде</button>
+  <label class="cpu" title="Музыка в исходнике набрана, но закомментирована: в релизе игра беззвучна. «Как задумывали» — будто эти строки включены">Музыка:
+    <select id="music"><option value="on">как задумывали</option><option value="off">нет, как в релизе</option></select></label>
   <label class="cpu" title="Скорость компьютера: от неё зависят мерцание и небольшое замедление игры, как было в DOS">Компьютер:
     <select id="cpu"><option value="486">486DX2-66, ISA</option><option value="pentium">Pentium-100, PCI</option><option value="instant">без задержек</option></select></label>
-  <span class="hint">S — старт · стрелки — лодка · +/− — скорость · Z, X — торпеды · Q — взорвать лодку · Esc — выход</span>
+  <span class="hint">S — старт · N — выкл. музыку · стрелки — лодка · +/− — скорость · Z, X — торпеды · Q — взорвать лодку · Esc — выход</span>
+</div>
+<div id="start">
+  <h1>Субмарина</h1>
+  <div>ЦДЮТ, Рыбинск</div>
+  <div class="go">Щёлкните или нажмите любую клавишу</div>
+  <div class="small">Перенос DOS-игры (Turbo Pascal 7, BGI, VGA 640×350) в браузер.
+    Музыка — «как задумывали»: в оригинале её код был закомментирован.</div>
 </div>
 <div id="dosmsg"><span>Программа завершилась. Нажмите любую клавишу, чтобы запустить её снова.</span></div>
 <div id="help" class="reader" lang="ru"><article>
@@ -116,6 +130,9 @@
 <p>И одно наблюдение, в котором авторы не виноваты. Две страницы заводились, чтобы убрать мерцание. Но драйвер BGI переключает страницу, не дожидаясь обратного хода луча, поэтому на медленной машине мерцание всё равно оставалось. Узнать это в девятом классе было неоткуда.</p>
 <p>Две видеостраницы и «ЦДЮТ» на заставке потом встречаются и в «Операции Ы». Для школьного проекта это хорошая работа: в ней видны и замысел, и инженерное мышление.</p>
 
+<h2>Музыка «как задумывали»</h2>
+<p>В исходнике набраны две мелодии частотами нот для PC-спикера и обработчики таймера, которые должны были их играть. Но все строки, включавшие эти обработчики, закомментированы, а в самом <code>SUBM8.EXE</code> их нет вовсе: релизная игра беззвучна. Здесь по умолчанию эти строки как будто раскомментированы. На заставке играет мелодия: таймер BIOS тикает 18,2 раза в секунду, нота меняется каждые четыре тика, частота считается через делитель таймера, как у <code>Sound</code> из Crt. N её выключает. Мелодия «ДОИГРАЛСЯ» включается в исходнике уже после нажатия клавиши и через 10 мс выключается, так что до первой ноты дело не доходит, и здесь она тоже не звучит. Переключатель «Музыка» внизу страницы возвращает релизную тишину.</p>
+
 <h2>Как проходил переезд</h2>
 <p>Программа переписана на JavaScript построчно, с теми же именами переменных. Под ней эмулируется то, на чём она стояла в DOS: модуль Graph с драйвером EGAVGA.BGI, модуль Crt, файлы и клавиатура. Главная удача — рядом с исходником лежал готовый <code>SUBM8.EXE</code>. Я запускал его в DOSBox без окон и сравнивал кадры с браузерной версией попиксельно. Заставка, «УРОВЕНЬ 1, 2, 3», начало уровней, «ДОИГРАЛСЯ» и «МОЛОДЕЦ» теперь совпадают до пикселя: ноль отличий на 640×350.</p>
 <p>Чтобы так получилось, пришлось выяснить, как BGI рисует на самом деле:</p>
@@ -161,7 +178,7 @@
 <li><b>Враги возвращаются.</b> Убитые враги появляются снова, если выйти из комнаты и вернуться: карта передаётся в процедуру по значению.</li>
 <li><b>Буквы и стрелки путаются.</b> Заглавные H, P, M, K работают как стрелки, а сочетания клавиш — как буквы игры: Ctrl+← — это S, Alt+F10 — Q, Alt+1 и Alt+3 — торпеды, Ctrl+[ — Esc.</li>
 <li><b>Утечка памяти</b>, около 3,4 КБ на партию. До нехватки памяти дело не доходит: раньше кончаются файлы.</li>
-<li><b>«N — ВЫКЛ. МУЗЫКУ» ничего не делает.</b> Мелодии в исходнике есть, а включавшие их обработчики таймера закомментированы.</li>
+<li><b>«N — ВЫКЛ. МУЗЫКУ» в релизе ничего не делает.</b> Мелодии в исходнике есть, а включавшие их обработчики таймера закомментированы.</li>
 </ul>
 <h3>Особенность сохранившегося EXE</h3>
 <p><code>SUBM8.EXE</code> из архива собран с исправленным модулем Crt, в котором нет знаменитой <code>Runtime error 200</code> на быстрых процессорах. Зато <code>Delay</code> в нём на быстрой машине укорачивается, поэтому в DOSBox на большой скорости игра бежит. На компьютерах того времени задержки были точными, и в переносе они тоже точные.</p>
@@ -317,6 +334,24 @@ function waitUntil(t) {
       if (rest <= 0) resolve(); else setTimeout(check, Math.min(rest, 50));
     })();
   });
+}
+
+// ---- таймер BIOS (INT 1Ch) и PC-спикер (Crt.Sound / NoSound) ---------------
+// Нужны только «нерелизной» музыке: в исходнике обработчики INT 1Ch закомментированы.
+// Таймер тикает 1193180/65536 = 18,2 раза в секунду; Sound программирует канал 2
+// таймера делителем 1193180 div Hz — отсюда точная частота ноты.
+var TICK_MS = 65536 * 1000 / 1193180;      // 54,925 мс
+var int1C = null, tickNo = -1;
+var speakerOut = null;                      // вывод звука подставляет браузер (main.js)
+function getintvec(n) { return int1C; }
+function setintvec(n, h) { int1C = h; }
+function sound(hz) { var div = Math.floor(1193180 / hz); if (speakerOut) speakerOut(1193180 / div); }
+function nosound() { if (speakerOut) speakerOut(0); }
+// тики таймера по реальному времени; пока игра на паузе (открыта справка), таймер стоит
+function timerPump(now) {
+  var k = Math.floor(now / TICK_MS);
+  if (tickNo < 0 || paused || k - tickNo > 40) { tickNo = k; return; }
+  while (tickNo < k) { tickNo++; if (int1C) int1C(); }
 }
 
 // ---- клавиатура: буфер BIOS (15 нажатий) и Crt.ReadKey ---------------------
@@ -679,12 +714,15 @@ function scanTo(t) {
 //     проверяются (rc/b) — выход за границы даёт Runtime error 201;
 //   * параметры-массивы, переданные по значению (vivod, perehod), — копии.
 //  Музыка в исходнике закомментирована (обработчики INT 1Ch не ставятся),
-//  поэтому игра беззвучна, а «N-ВЫКЛ.МУЗЫКУ» ничего не делает — как в оригинале.
+//  поэтому релизная игра беззвучна, а «N-ВЫКЛ.МУЗЫКУ» ничего не делает.
+//  Здесь эти строки можно «раскомментировать» (MUSIC = true, переключатель
+//  «Музыка» внизу страницы) — «нерелизная» версия, будто музыка была.
 // =============================================================================
 
 var max = 33, nn = 15, mm = 10, bb = 75, sssr = 80;
 var maxx = 26, maxxx = 129;
-// мелодии (используются только закомментированными обработчиками Music/Music1)
+var MUSIC = false;                          // true — включены закомментированные строки музыки
+// мелодии: частоты нот (используются обработчиками Music1/Music)
 var cnll = [0, 220, 233, 262, 262, 262, 262, 262, 220, 196, 220, 175, 175, 175, 175, 175, 175, 196, 220, 196,
   175, 147, 147, 147, 175, 196, 220, 196, 196, 196, 196, 196, 196, 220, 233, 262, 262, 262,
   262, 262, 220, 196, 220, 175, 175, 175, 175, 175, 175, 196, 220, 196, 175, 147, 147, 147,
@@ -1140,6 +1178,31 @@ async function provracgran() {
   }
 }
 
+// procedure Music1; interrupt; — мелодия заставки, нота каждые 4 тика (~0,22 с)
+function Music1() {
+  pause = pause + 1;
+  if (pause === 5) {                        // {<<<<<-----pause=задержка}
+    sound(cnll[rc(mus, 1, maxxx)]);
+    mus = mus + 1;
+    pause = 1;
+  }
+  if (mus >= maxxx) mus = 1;
+}
+// procedure Music; interrupt; — мелодия «ДОИГРАЛСЯ», нота каждые 5 тиков (~0,27 с)
+function Music() {
+  pause = pause + 1;
+  if (pause === 6) {                        // {<<<<<-----pause=задержка}
+    sound(cnl[rc(mus, 1, maxx)]);
+    mus = mus + 1;
+    pause = 1;
+  }
+  if (mus >= maxx) mus = 1;
+}
+// закомментированные в исходнике строки: { getintvec($1C,Old1C); setintvec($1C,@...); }
+// и { setintvec($1C,old1c); nosound; } — выполняются только в «нерелизной» версии
+function musicOn(handler) { if (MUSIC) { old1c = getintvec(0x1C); setintvec(0x1C, handler); } }
+function musicOff() { if (old1c !== null || int1C) { setintvec(0x1C, old1c); nosound(); } }
+
 function odd(n) { return (n & 1) === 1; }
 function ch(s1) { return s1.charCodeAt(0); }
 
@@ -1238,7 +1301,7 @@ async function subm8() {
     qq = 1;
     sp = 5; saq = 1;
     mus = 1; pause = 1;
-    // { getintvec($1C,Old1C); setintvec($1C,@Music1); } — закомментировано в оригинале
+    musicOn(Music1);                        // { getintvec($1C,Old1C); setintvec($1C,@Music1); }
     settextstyle(4, 0, 4);
     do {
       await delay(50);
@@ -1270,8 +1333,8 @@ async function subm8() {
       if (keypressed()) {
         c = await readkey();
         switch (c) {
-          case ch('q'): closegraph(); throw new HaltSignal();
-          case ch('n'): break;              // { setintvec($1C,old1c); nosound; } — закомментировано
+          case ch('q'): musicOff(); closegraph(); throw new HaltSignal();   // {setintvec($1C,old1c);nosound;}
+          case ch('n'): musicOff(); break;  // { setintvec($1C,old1c); nosound; }
           case ch('+'): sp = sp + 1; break;
           case ch('-'): sp = sp - 1; break;
         }
@@ -1280,6 +1343,7 @@ async function subm8() {
       // клавишей прошлой игры была «s» (пропуск уровня), заставка мелькает
       // на один кадр и новая игра начинается сама.
     } while (c !== ch('s'));
+    musicOff();                             // {setintvec($1C,old1c); nosound;}
     settextstyle(0, 0, 6);
     fil = new TextFile('ekran1.txt', '0000:3E85');   // закрывается только после «until 1=2»
     loadfon();
@@ -1624,8 +1688,12 @@ async function subm8() {
       i = 1;
       await readkey();
       mus = 1; pause = 1;
-      // { getintvec($1C,Old1C); setintvec($1C,@Music); } — закомментировано
+      // В исходнике мелодия «ДОИГРАЛСЯ» включается ПОСЛЕ нажатия клавиши и
+      // выключается через Delay(10) («{<<<--и(не в цикле) }» — недоделано):
+      // за 10 мс таймер не доходит до первой ноты, мелодия не звучит. Так и оставлено.
+      musicOn(Music);                       // { getintvec($1C,Old1C); setintvec($1C,@Music); }
       await delay(10);
+      musicOff();                           // { setintvec($1C,old1c); nosound; }
     }
     if (stage === 4) {
       settextstyle(7, 0, 6);
@@ -1656,14 +1724,34 @@ async function subm8() {
 var canvas, ctx, img, img32;
 var PAL32 = new Uint32Array(16);
 var progState = 'run';          // run | dos | error
+var running = false;            // программа запущена (после первого нажатия — иначе браузер не даст звук)
+
+// ---- PC-спикер: квадратная волна (в «нерелизной» версии с музыкой) ----------
+var audioCtx = null, spkOsc = null, spkGain = null, spkHz = 0;
+function audioInit() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; } }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function speakerApply() {
+  if (!audioCtx) return;
+  if (!spkOsc) {
+    spkOsc = audioCtx.createOscillator(); spkOsc.type = 'square';
+    spkGain = audioCtx.createGain(); spkGain.gain.value = 0;
+    spkOsc.connect(spkGain); spkGain.connect(audioCtx.destination); spkOsc.start();
+  }
+  var on = spkHz > 0 && MUSIC && !paused && progState === 'run';
+  if (on) spkOsc.frequency.setValueAtTime(spkHz, audioCtx.currentTime);
+  spkGain.gain.setValueAtTime(on ? 0.05 : 0, audioCtx.currentTime);
+}
+speakerOut = function (hz) { spkHz = hz; speakerApply(); };
 var errorCode = 0;
 var reportOpen = false;         // открыто окно справки или отчёта — игра на паузе
 
 // на экран идёт последний кадр, «прочерченный» лучом (см. развёртку в bgi.js)
 function present() {
   requestAnimationFrame(present);
-  if (progState === 'dos') return;
-  if (progState === 'run') scanTo(Math.min(nowMs(), awaitLimit));
+  if (!running || progState === 'dos') return;
+  if (progState === 'run') { timerPump(nowMs()); scanTo(Math.min(nowMs(), awaitLimit)); }
   var src = progState === 'run' ? dispDone : VRAM.subarray(PAGE_BASE[bgi.visual], PAGE_BASE[bgi.visual] + 640 * 350);
   for (var p = 0; p < 640 * 350; p++) img32[p] = PAL32[src[p]];
   ctx.putImageData(img, 0, 0);
@@ -1680,7 +1768,7 @@ function biosText(buf, base, row, col, s) {
 }
 // экран DOS после выхода из программы: CloseGraph вернул текстовый режим 80x25
 function showDos(lines) {
-  progState = 'dos';
+  progState = 'dos'; speakerApply();
   var t = new Uint8Array(640 * 350);
   for (var r = 0; r < lines.length; r++) biosText(t, 0, r, 0, S(lines[r]));
   for (var p = 0; p < 640 * 350; p++) img32[p] = PAL32[t[p]];
@@ -1702,7 +1790,7 @@ async function runProgram() {
 // сообщение телетайпом BIOS поверх картинки (на видимой странице), затем
 // COMMAND.COM — приглашение. Так выглядит и оригинал в DOSBox.
 function showRunError(e) {
-  progState = 'error';
+  progState = 'error'; speakerApply();
   console.warn('[оригинал] Runtime error ' + e.code + ' at ' + e.addr);
   var code = ('00' + e.code).slice(-3);
   var base = PAGE_BASE[bgi.visual];
@@ -1714,7 +1802,7 @@ function showRunError(e) {
 // Ctrl+Break: Crt пишет «^C» в левый верхний угол страницы 0 и завершает
 // программу без сообщения; экран остаётся в графике
 function showBreak() {
-  progState = 'error';
+  progState = 'error'; speakerApply();
   biosText(VRAM, PAGE_BASE[0], 0, 0, S('^C'));
   biosText(VRAM, PAGE_BASE[bgi.visual], 2, 0, S('C:\\>'));
   document.getElementById('dosmsg').style.display = 'flex';
@@ -1805,6 +1893,10 @@ function onKeyDown(e) {
   }
   if (e.metaKey) return;
   if (e.code === 'F11' || e.code === 'F12' || (e.code === 'F5' && !e.altKey && !e.shiftKey && !e.ctrlKey)) return;
+  if (!running) {
+    if (!e.ctrlKey && !e.altKey) { e.preventDefault(); startGame(); }
+    return;
+  }
   if (progState !== 'run') {
     if (e.ctrlKey || e.altKey) return;
     e.preventDefault(); if (!e.repeat) location.reload(); return;
@@ -1839,6 +1931,7 @@ function toggleReport(which) {
     el.classList.toggle('open', id === reportOpen);
     document.getElementById('btn-' + id).textContent = id === reportOpen ? 'К игре' : READERS[id];
   });
+  speakerApply();
   if (!reportOpen) canvas.focus();
 }
 
@@ -1873,8 +1966,24 @@ function boot() {
     try { localStorage.setItem('subm:cpu', sel.value); } catch (e) {}
     canvas.focus();
   };
-  realStart = performance.now(); vclock = 0; scanReset(0);
+  var mus = document.getElementById('music');
+  try { var savedMus = localStorage.getItem('subm:music'); if (savedMus === 'on' || savedMus === 'off') mus.value = savedMus; } catch (e) {}
+  MUSIC = mus.value === 'on';
+  mus.onchange = function () {
+    MUSIC = mus.value === 'on';
+    try { localStorage.setItem('subm:music', mus.value); } catch (e) {}
+    audioInit(); speakerApply(); canvas.focus();
+  };
+  document.getElementById('start').addEventListener('click', function (e) { e.preventDefault(); startGame(); });
   requestAnimationFrame(present);
+}
+// запуск по первому щелчку или клавише: SUBM8.EXE «запускается» с этого момента
+function startGame() {
+  if (running) return;
+  document.getElementById('start').style.display = 'none';
+  audioInit();
+  running = true;
+  realStart = performance.now(); vclock = 0; scanReset(0); tickNo = -1;
   canvas.focus();
   runProgram();
 }

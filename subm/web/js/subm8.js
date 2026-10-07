@@ -9,12 +9,15 @@
 //     проверяются (rc/b) — выход за границы даёт Runtime error 201;
 //   * параметры-массивы, переданные по значению (vivod, perehod), — копии.
 //  Музыка в исходнике закомментирована (обработчики INT 1Ch не ставятся),
-//  поэтому игра беззвучна, а «N-ВЫКЛ.МУЗЫКУ» ничего не делает — как в оригинале.
+//  поэтому релизная игра беззвучна, а «N-ВЫКЛ.МУЗЫКУ» ничего не делает.
+//  Здесь эти строки можно «раскомментировать» (MUSIC = true, переключатель
+//  «Музыка» внизу страницы) — «нерелизная» версия, будто музыка была.
 // =============================================================================
 
 var max = 33, nn = 15, mm = 10, bb = 75, sssr = 80;
 var maxx = 26, maxxx = 129;
-// мелодии (используются только закомментированными обработчиками Music/Music1)
+var MUSIC = false;                          // true — включены закомментированные строки музыки
+// мелодии: частоты нот (используются обработчиками Music1/Music)
 var cnll = [0, 220, 233, 262, 262, 262, 262, 262, 220, 196, 220, 175, 175, 175, 175, 175, 175, 196, 220, 196,
   175, 147, 147, 147, 175, 196, 220, 196, 196, 196, 196, 196, 196, 220, 233, 262, 262, 262,
   262, 262, 220, 196, 220, 175, 175, 175, 175, 175, 175, 196, 220, 196, 175, 147, 147, 147,
@@ -470,6 +473,31 @@ async function provracgran() {
   }
 }
 
+// procedure Music1; interrupt; — мелодия заставки, нота каждые 4 тика (~0,22 с)
+function Music1() {
+  pause = pause + 1;
+  if (pause === 5) {                        // {<<<<<-----pause=задержка}
+    sound(cnll[rc(mus, 1, maxxx)]);
+    mus = mus + 1;
+    pause = 1;
+  }
+  if (mus >= maxxx) mus = 1;
+}
+// procedure Music; interrupt; — мелодия «ДОИГРАЛСЯ», нота каждые 5 тиков (~0,27 с)
+function Music() {
+  pause = pause + 1;
+  if (pause === 6) {                        // {<<<<<-----pause=задержка}
+    sound(cnl[rc(mus, 1, maxx)]);
+    mus = mus + 1;
+    pause = 1;
+  }
+  if (mus >= maxx) mus = 1;
+}
+// закомментированные в исходнике строки: { getintvec($1C,Old1C); setintvec($1C,@...); }
+// и { setintvec($1C,old1c); nosound; } — выполняются только в «нерелизной» версии
+function musicOn(handler) { if (MUSIC) { old1c = getintvec(0x1C); setintvec(0x1C, handler); } }
+function musicOff() { if (old1c !== null || int1C) { setintvec(0x1C, old1c); nosound(); } }
+
 function odd(n) { return (n & 1) === 1; }
 function ch(s1) { return s1.charCodeAt(0); }
 
@@ -568,7 +596,7 @@ async function subm8() {
     qq = 1;
     sp = 5; saq = 1;
     mus = 1; pause = 1;
-    // { getintvec($1C,Old1C); setintvec($1C,@Music1); } — закомментировано в оригинале
+    musicOn(Music1);                        // { getintvec($1C,Old1C); setintvec($1C,@Music1); }
     settextstyle(4, 0, 4);
     do {
       await delay(50);
@@ -600,8 +628,8 @@ async function subm8() {
       if (keypressed()) {
         c = await readkey();
         switch (c) {
-          case ch('q'): closegraph(); throw new HaltSignal();
-          case ch('n'): break;              // { setintvec($1C,old1c); nosound; } — закомментировано
+          case ch('q'): musicOff(); closegraph(); throw new HaltSignal();   // {setintvec($1C,old1c);nosound;}
+          case ch('n'): musicOff(); break;  // { setintvec($1C,old1c); nosound; }
           case ch('+'): sp = sp + 1; break;
           case ch('-'): sp = sp - 1; break;
         }
@@ -610,6 +638,7 @@ async function subm8() {
       // клавишей прошлой игры была «s» (пропуск уровня), заставка мелькает
       // на один кадр и новая игра начинается сама.
     } while (c !== ch('s'));
+    musicOff();                             // {setintvec($1C,old1c); nosound;}
     settextstyle(0, 0, 6);
     fil = new TextFile('ekran1.txt', '0000:3E85');   // закрывается только после «until 1=2»
     loadfon();
@@ -954,8 +983,12 @@ async function subm8() {
       i = 1;
       await readkey();
       mus = 1; pause = 1;
-      // { getintvec($1C,Old1C); setintvec($1C,@Music); } — закомментировано
+      // В исходнике мелодия «ДОИГРАЛСЯ» включается ПОСЛЕ нажатия клавиши и
+      // выключается через Delay(10) («{<<<--и(не в цикле) }» — недоделано):
+      // за 10 мс таймер не доходит до первой ноты, мелодия не звучит. Так и оставлено.
+      musicOn(Music);                       // { getintvec($1C,Old1C); setintvec($1C,@Music); }
       await delay(10);
+      musicOff();                           // { setintvec($1C,old1c); nosound; }
     }
     if (stage === 4) {
       settextstyle(7, 0, 6);
